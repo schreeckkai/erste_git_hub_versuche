@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathe Schreck - Lernkarten Geometrie</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                displayMath: [['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        .perspective { perspective: 1000px; }
+        .flip-card-inner {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .flipped { transform: rotateY(180deg); }
+        .flip-card-front, .flip-card-back {
+            backface-visibility: hidden;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+        }
+        .flip-card-back { transform: rotateY(180deg); }
+        .accent-border { border-top: 4px solid #E63946; }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center p-4 md:p-8">
+
+    <header class="text-center mb-8">
+        <h1 class="text-4xl font-bold text-[#E63946] mb-2 tracking-tight">MATHE SCHRECK</h1>
+        <p class="text-slate-400">Mastery: Figuren & Körper</p>
+    </header>
+
+    <div class="w-full max-w-md">
+        <!-- Progress Bar -->
+        <div class="bg-slate-800 h-2 w-full rounded-full mb-6 overflow-hidden">
+            <div id="progressBar" class="bg-[#E63946] h-full transition-all duration-300" style="width: 5%"></div>
+        </div>
+
+        <!-- Card Container -->
+        <div class="perspective h-80 mb-8 cursor-pointer" onclick="flipCard()">
+            <div id="cardInner" class="flip-card-inner w-full h-full relative">
+                <!-- Front -->
+                <div class="flip-card-front bg-slate-800 rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-2xl accent-border">
+                    <span class="text-xs uppercase tracking-widest text-[#E63946] mb-4" id="cardCategory">Geometrische Figur</span>
+                    <h2 class="text-2xl font-semibold" id="cardQuestion">Lade Karte...</h2>
+                    <p class="mt-4 text-slate-500 text-sm">Klicke zum Umdrehen</p>
+                </div>
+                <!-- Back -->
+                <div class="flip-card-back bg-slate-700 rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-2xl accent-border">
+                    <span class="text-xs uppercase tracking-widest text-slate-400 mb-4">Lösung / Formel</span>
+                    <div id="cardAnswer" class="text-xl w-full">...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex justify-between gap-4">
+            <button onclick="prevCard()" class="flex-1 bg-slate-800 hover:bg-slate-700 py-3 rounded-2xl transition font-bold border border-slate-700">ZURÜCK</button>
+            <button onclick="nextCard()" class="flex-1 bg-[#E63946] hover:bg-red-500 py-3 rounded-2xl transition font-bold shadow-lg shadow-red-900/20">WEITER</button>
+        </div>
+        
+        <p class="text-center mt-6 text-slate-500" id="cardCounter">Karte 1 von 20</p>
+    </div>
+
+    <script>
+        // CONTROLLER-KORREKTUR: Alle Backslashes wurden systematisch verdoppelt (Escaping)
+        const cards = [
+            { cat: "Quadrat", q: "Flächeninhalt \\( A \\)", a: "\\[ A = a^2 \\]" },
+            { cat: "Quadrat", q: "Umfang \\( U \\)", a: "\\[ U = 4 \\cdot a \\]" },
+            { cat: "Rechteck", q: "Flächeninhalt \\( A \\)", a: "\\[ A = a \\cdot b \\]" },
+            { cat: "Dreieck", q: "Flächeninhalt \\( A \\)", a: "\\[ A = \\frac{1}{2} \\cdot g \\cdot h \\]" },
+            { cat: "Trapez", q: "Flächeninhalt \\( A \\)", a: "\\[ A = \\frac{a+c}{2} \\cdot h \\]" },
+            { cat: "Parallelogramm", q: "Flächeninhalt \\( A \\)", a: "\\[ A = g \\cdot h \\]" },
+            { cat: "Kreis", q: "Umfang \\( U \\)", a: "\\[ U = 2 \\cdot \\pi \\cdot r \\]" },
+            { cat: "Kreis", q: "Flächeninhalt \\( A \\)", a: "\\[ A = \\pi \\cdot r^2 \\]" },
+            { cat: "Würfel", q: "Volumen \\( V \\)", a: "\\[ V = a^3 \\]" },
+            { cat: "Würfel", q: "Oberfläche \\( O \\)", a: "\\[ O = 6 \\cdot a^2 \\]" },
+            { cat: "Quader", q: "Volumen \\( V \\)", a: "\\[ V = a \\cdot b \\cdot c \\]" },
+            { cat: "Quader", q: "Oberfläche \\( O \\)", a: "\\[ O = 2 \\cdot (a \\cdot b + a \\cdot c + b \\cdot c) \\]" },
+            { cat: "Zylinder", q: "Volumen \\( V \\)", a: "\\[ V = \\pi \\cdot r^2 \\cdot h \\]" },
+            { cat: "Zylinder", q: "Oberfläche \\( O \\)", a: "\\[ O = 2 \\cdot \\pi \\cdot r^2 + 2 \\cdot \\pi \\cdot r \\cdot h \\]" },
+            { cat: "Kugel", q: "Volumen \\( V \\)", a: "\\[ V = \\frac{4}{3} \\cdot \\pi \\cdot r^3 \\]" },
+            { cat: "Kugel", q: "Oberfläche \\( O \\)", a: "\\[ O = 4 \\cdot \\pi \\cdot r^2 \\]" },
+            { cat: "Prisma", q: "Volumen \\( V \\)", a: "\\[ V = G \\cdot h \\]" },
+            { cat: "Pyramide", q: "Volumen \\( V \\)", a: "\\[ V = \\frac{1}{3} \\cdot G \\cdot h \\]" },
+            { cat: "Grundlagen", q: "Was berechnet der Umfang?", a: "Die Länge der äußeren Begrenzungslinie einer Figur (1D)." },
+            { cat: "Grundlagen", q: "Was berechnet das Volumen?", a: "Den Rauminhalt eines dreidimensionalen Körpers (3D)." }
+        ];
+
+        let currentIndex = 0;
+
+        function updateCard() {
+            const card = cards[currentIndex];
+            const cardInner = document.getElementById('cardInner');
+            cardInner.classList.remove('flipped');
+            
+            setTimeout(() => {
+                document.getElementById('cardCategory').innerText = card.cat;
+                document.getElementById('cardQuestion').innerHTML = card.q;
+                document.getElementById('cardAnswer').innerHTML = card.a;
+                document.getElementById('cardCounter').innerText = `Karte ${currentIndex + 1} von ${cards.length}`;
+                document.getElementById('progressBar').style.width = `${((currentIndex + 1) / cards.length) * 100}%`;
+                
+                if (window.MathJax) {
+                    MathJax.typesetPromise([document.getElementById('cardQuestion'), document.getElementById('cardAnswer')]).catch((err) => console.log(err.message));
+                }
+            }, 150);
+        }
+
+        function flipCard() {
+            document.getElementById('cardInner').classList.toggle('flipped');
+        }
+
+        function nextCard() {
+            currentIndex = (currentIndex + 1) % cards.length;
+            updateCard();
+        }
+
+        function prevCard() {
+            currentIndex = (currentIndex - 1 + cards.length) % cards.length;
+            updateCard();
+        }
+
+        window.onload = updateCard;
+    </script>
+</body>
+</html>

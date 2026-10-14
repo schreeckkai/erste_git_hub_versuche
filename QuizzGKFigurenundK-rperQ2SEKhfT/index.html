@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathe Schreck - Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
+
+    <div id="quizApp" class="w-full max-w-2xl bg-slate-800 rounded-2xl shadow-2xl overflow-hidden border border-slate-700">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="p-8 text-center">
+            <h1 class="text-4xl font-bold text-[#E63946] mb-4">MATHE SCHRECK QUIZ</h1>
+            <p class="text-slate-400 mb-8">15 knallharte Fragen zu Figuren und Körpern.</p>
+            <div id="lockoutMsg" class="hidden mb-6 p-4 bg-red-900/30 text-red-400 border border-red-500 rounded-2xl">
+                Du hast das Quiz bereits gemacht. Bitte warte 10 Minuten für einen neuen Versuch.
+            </div>
+            <input type="text" id="userName" placeholder="Dein Vorname" class="w-full bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-6 focus:border-[#E63946] outline-none">
+            <button onclick="startQuiz()" class="w-full bg-[#E63946] py-4 rounded-2xl font-bold hover:bg-red-500 transition shadow-lg shadow-red-900/30">QUIZ STARTEN</button>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div id="quizScreen" class="hidden p-8">
+            <div class="flex justify-between items-center mb-6">
+                <span id="afBadge" class="bg-blue-600 text-[10px] px-2 py-1 rounded-full font-bold">AF X</span>
+                <span id="questionCount" class="text-slate-500 text-sm">Frage 1/15</span>
+            </div>
+            <h2 id="questionText" class="text-xl md:text-2xl font-bold mb-8">Lade Frage...</h2>
+            <div id="optionsContainer" class="space-y-4"></div>
+            <div id="feedback" class="mt-8 hidden p-4 rounded-2xl border"></div>
+            <button id="nextBtn" onclick="nextQuestion()" class="hidden mt-8 w-full bg-slate-700 py-4 rounded-2xl font-bold hover:bg-slate-600 transition">NÄCHSTE FRAGE</button>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="resultScreen" class="hidden p-8 md:p-12 text-center">
+            <div class="inline-block p-6 rounded-full bg-green-500/20 text-green-500 mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <h2 class="text-3xl font-bold mb-2">Quiz beendet!</h2>
+            <p id="finalName" class="text-xl text-slate-300 mb-6"></p>
+            <div class="bg-slate-900 rounded-2xl p-6 mb-8 border border-slate-700">
+                <p class="text-slate-400 uppercase text-xs tracking-widest mb-1">Ergebnis</p>
+                <p id="finalScore" class="text-5xl font-black text-[#E63946]"></p>
+                <p id="timestamp" class="text-slate-500 text-xs mt-4"></p>
+            </div>
+            <div class="bg-yellow-900/20 border border-yellow-600/50 text-yellow-500 p-4 rounded-2xl font-bold animate-pulse text-sm md:text-base">
+                HINWEIS: Bitte mache einen Screenshot und lade ihn im Schulportal hoch.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const QUIZ_ID = "MATHE_SCHRECK_GEO_v3";
+        
+        // CONTROLLER-KORREKTUR: Alle LaTeX-Backslashes (\\cdot, \\pi, \\frac) sind nun konsequent escaped!
+        const questionsData = [
+            {
+                "question": "Welche Formel berechnet den Flächeninhalt \\( A \\) eines Rechtecks?",
+                "answerOptions": [
+                    { "text": "\\( A = a \\cdot b \\)", "rationale": "Korrekt! Grundseite mal Höhe.", "isCorrect": true },
+                    { "text": "\\( A = a^2 \\)", "rationale": "Dies ist die Formel für ein Quadrat.", "isCorrect": false },
+                    { "text": "\\( U = 2 \\cdot a + 2 \\cdot b \\)", "rationale": "Dies berechnet den Umfang, nicht die Fläche.", "isCorrect": false },
+                    { "text": "\\( A = \\frac{1}{2} \\cdot a \\cdot b \\)", "rationale": "Dies wäre für ein rechtwinkliges Dreieck.", "isCorrect": false }
+                ],
+                "hint": "Denke an Länge mal Breite.",
+                "points": 1,
+                "af": "AF 1"
+            },
+            {
+                "question": "Wie lautet die Formel für den Umfang \\( U \\) eines Kreises?",
+                "answerOptions": [
+                    { "text": "\\( U = 2 \\cdot \\pi \\cdot r \\)", "rationale": "Korrekt! Alternativ auch \\( \\pi \\cdot d \\).", "isCorrect": true },
+                    { "text": "\\( A = \\pi \\cdot r^2 \\)", "rationale": "Das ist die Formel für den Flächeninhalt.", "isCorrect": false },
+                    { "text": "\\( U = \\pi \\cdot r \\)", "rationale": "Hier fehlt der Faktor 2.", "isCorrect": false },
+                    { "text": "\\( U = 4 \\cdot \\pi \\cdot r^2 \\)", "rationale": "Das ist die Oberfläche einer Kugel.", "isCorrect": false }
+                ],
+                "hint": "Der Durchmesser \\( d \\) ist \\( 2 \\cdot r \\).",
+                "points": 1,
+                "af": "AF 1"
+            },
+            {
+                "question": "Ein Zylinder hat den Radius \\( r \\) und die Höhe \\( h \\). Wie lautet sein Volumen \\( V \\)?",
+                "answerOptions": [
+                    { "text": "\\( V = \\pi \\cdot r^2 \\cdot h \\)", "rationale": "Korrekt! Grundfläche (Kreis) mal Höhe.", "isCorrect": true },
+                    { "text": "\\( V = 2 \\cdot \\pi \\cdot r \\cdot h \\)", "rationale": "Das ist die Mantelfläche.", "isCorrect": false },
+                    { "text": "\\( V = \\frac{1}{3} \\cdot \\pi \\cdot r^2 \\cdot h \\)", "rationale": "Das ist das Volumen eines Kegels.", "isCorrect": false },
+                    { "text": "\\( V = \\pi \\cdot d \\cdot h \\)", "rationale": "Falsche Verknüpfung von Durchmesser und Höhe.", "isCorrect": false }
+                ],
+                "hint": "Jeder gerade Körper (ohne Spitze) hat die Volumenformel: Grundfläche mal Höhe.",
+                "points": 1,
+                "af": "AF 1"
+            },
+            {
+                "question": "Welche Formel beschreibt das Volumen \\( V \\) einer Pyramide mit der Grundfläche \\( G \\)?",
+                "answerOptions": [
+                    { "text": "\\( V = \\frac{1}{3} \\cdot G \\cdot h \\)", "rationale": "Korrekt! Spitze Körper haben den Vorfaktor ein Drittel.", "isCorrect": true },
+                    { "text": "\\( V = G \\cdot h \\)", "rationale": "Das gilt für ein Prisma.", "isCorrect": false },
+                    { "text": "\\( V = \\frac{1}{2} \\cdot G \\cdot h \\)", "rationale": "Falscher Vorfaktor.", "isCorrect": false },
+                    { "text": "\\( V = \\frac{4}{3} \\cdot \\pi \\cdot r^3 \\)", "rationale": "Das ist das Kugelvolumen.", "isCorrect": false }
+                ],
+                "hint": "Eine Pyramide passt dreimal in ein Prisma gleicher Grundfläche und Höhe.",
+                "points": 1,
+                "af": "AF 1"
+            },
+            {
+                "question": "Wie berechnet man den Flächeninhalt \\( A \\) eines Dreiecks?",
+                "answerOptions": [
+                    { "text": "\\( A = \\frac{1}{2} \\cdot g \\cdot h \\)", "rationale": "Korrekt! Die Hälfte eines Rechtecks/Parallelogramms.", "isCorrect": true },
+                    { "text": "\\( A = g \\cdot h \\)", "rationale": "Das ist der Flächeninhalt eines Parallelogramms.", "isCorrect": false },
+                    { "text": "\\( A = \\frac{a+b+c}{2} \\)", "rationale": "Das ist der halbe Umfang.", "isCorrect": false },
+                    { "text": "\\( A = a^2 + b^2 \\)", "rationale": "Das ist ein Teil des Satzes des Pythagoras.", "isCorrect": false }
+                ],
+                "hint": "Ein Dreieck ist quasi ein halbiertes Viereck.",
+                "points": 1,
+                "af": "AF 1"
+            },
+            {
+                "question": "Was beschreibt die Oberfläche \\( O \\) eines Quaders?",
+                "answerOptions": [
+                    { "text": "\\( O = 2 \\cdot (a \\cdot b + a \\cdot c + b \\cdot c) \\)", "rationale": "Korrekt! Alle 6 Flächen werden paarweise addiert.", "isCorrect": true },
+                    { "text": "\\( V = a \\cdot b \\cdot c \\)", "rationale": "Das ist das Volumen.", "isCorrect": false },
+                    { "text": "\\( O = 6 \\cdot a^2 \\)", "rationale": "Das ist die Oberfläche eines Würfels.", "isCorrect": false },
+                    { "text": "\\( O = a + b + c \\)", "rationale": "Das ist nur die Summe von 3 Kanten.", "isCorrect": false }
+                ],
+                "hint": "Ein Quader hat 6 Rechteckflächen, wobei gegenüberliegende gleich groß sind.",
+                "points": 1,
+                "af": "AF 1"
+            },
+            {
+                "question": "Ein Quadrat hat einen Umfang von \\( U = 20 \\text{ cm} \\). Wie groß ist sein Flächeninhalt \\( A \\)?",
+                "answerOptions": [
+                    { "text": "\\( 25 \\text{ cm}^2 \\)", "rationale": "Korrekt! Die Seite \\( a = 20 / 4 = 5 \\). Fläche \\( A = 5^2 = 25 \\).", "isCorrect": true },
+                    { "text": "\\( 400 \\text{ cm}^2 \\)", "rationale": "Du hast den Umfang quadriert, nicht die Seitenlänge.", "isCorrect": false },
+                    { "text": "\\( 100 \\text{ cm}^2 \\)", "rationale": "Du hast \\( 20 \\cdot 5 \\) statt \\( 5 \\cdot 5 \\) gerechnet.", "isCorrect": false },
+                    { "text": "\\( 10 \\text{ cm}^2 \\)", "rationale": "Falsch gerechnet.", "isCorrect": false }
+                ],
+                "hint": "Berechne zuerst die Seitenlänge \\( a \\).",
+                "points": 1,
+                "af": "AF 2"
+            },
+            {
+                "question": "Ein Quader hat die Kantenlängen \\( a=2 \\), \\( b=3 \\) und \\( c=4 \\). Wie groß ist das Volumen?",
+                "answerOptions": [
+                    { "text": "\\( 24 \\)", "rationale": "Korrekt! \\( 2 \\cdot 3 \\cdot 4 = 24 \\).", "isCorrect": true },
+                    { "text": "\\( 9 \\)", "rationale": "Du hast die Seiten addiert (\\( 2+3+4 \\)).", "isCorrect": false },
+                    { "text": "\\( 52 \\)", "rationale": "Das ist die Oberfläche des Quaders.", "isCorrect": false },
+                    { "text": "\\( 14 \\)", "rationale": "Falsch berechnet.", "isCorrect": false }
+                ],
+                "hint": "Volumen = Länge mal Breite mal Höhe.",
+                "points": 1,
+                "af": "AF 2"
+            },
+            {
+                "question": "Ein Parallelogramm hat einen Flächeninhalt von \\( A = 30 \\) und eine Grundseite \\( g = 5 \\). Wie lang ist die Höhe \\( h \\)?",
+                "answerOptions": [
+                    { "text": "\\( 6 \\)", "rationale": "Korrekt! \\( 30 / 5 = 6 \\).", "isCorrect": true },
+                    { "text": "\\( 150 \\)", "rationale": "Du hast \\( 30 \\cdot 5 \\) gerechnet. Die Formel muss umgestellt werden.", "isCorrect": false },
+                    { "text": "\\( 12 \\)", "rationale": "Du hast die Dreiecksformel verwendet und noch verdoppelt.", "isCorrect": false },
+                    { "text": "\\( 25 \\)", "rationale": "Du hast subtrahiert.", "isCorrect": false }
+                ],
+                "hint": "Stelle die Formel \\( A = g \\cdot h \\) nach \\( h \\) um.",
+                "points": 1,
+                "af": "AF 2"
+            },
+            {
+                "question": "Ein Trapez hat die parallelen Seiten \\( a=4 \\) und \\( c=6 \\). Die Höhe ist \\( h=5 \\). Wie groß ist die Fläche?",
+                "answerOptions": [
+                    { "text": "\\( 25 \\)", "rationale": "Korrekt! \\( (4+6)/2 \\cdot 5 = 5 \\cdot 5 = 25 \\).", "isCorrect": true },
+                    { "text": "\\( 50 \\)", "rationale": "Du hast vergessen, die Summe durch 2 zu teilen.", "isCorrect": false },
+                    { "text": "\\( 15 \\)", "rationale": "Falsche Berechnung.", "isCorrect": false },
+                    { "text": "\\( 120 \\)", "rationale": "Du hast alles multipliziert.", "isCorrect": false }
+                ],
+                "hint": "Setze in \\( A = \\frac{a+c}{2} \\cdot h \\) ein.",
+                "points": 1,
+                "af": "AF 2"
+            },
+            {
+                "question": "Eine Kugel hat einen Radius von \\( r=3 \\). Berechne das Volumen (in Abhängigkeit von \\( \\pi \\)).",
+                "answerOptions": [
+                    { "text": "\\( 36 \\cdot \\pi \\)", "rationale": "Korrekt! \\( \\frac{4}{3} \\cdot \\pi \\cdot 3^3 = \\frac{4}{3} \\cdot 27 \\cdot \\pi = 36 \\pi \\).", "isCorrect": true },
+                    { "text": "\\( 108 \\cdot \\pi \\)", "rationale": "Du hast den Bruch \\( \\frac{4}{3} \\) weggelassen oder falsch verrechnet.", "isCorrect": false },
+                    { "text": "\\( 12 \\cdot \\pi \\)", "rationale": "Du hast den Radius nur quadriert.", "isCorrect": false },
+                    { "text": "\\( 27 \\cdot \\pi \\)", "rationale": "Du hast nur \\( r^3 \\) gerechnet.", "isCorrect": false }
+                ],
+                "hint": "Die Formel ist \\( V = \\frac{4}{3} \\cdot \\pi \\cdot r^3 \\). Was ist \\( 3^3 \\)?",
+                "points": 2,
+                "af": "AF 2"
+            },
+            {
+                "question": "Zwei identische Würfel mit Kantenlänge \\( a=2 \\) werden an je einer Seitenfläche exakt zusammengeklebt. Wie groß ist die Oberfläche des neuen Körpers?",
+                "answerOptions": [
+                    { "text": "\\( 40 \\)", "rationale": "Korrekt! Zwei Würfel hätten 12 Flächen. Durch das Kleben entfallen 2. Bleiben 10 Flächen à \\( 2 \\cdot 2 = 4 \\). \\( 10 \\cdot 4 = 40 \\).", "isCorrect": true },
+                    { "text": "\\( 48 \\)", "rationale": "Du hast die beiden Klebeflächen nicht abgezogen.", "isCorrect": false },
+                    { "text": "\\( 16 \\)", "rationale": "Das ist das Volumen der beiden Würfel, nicht die Oberfläche.", "isCorrect": false },
+                    { "text": "\\( 32 \\)", "rationale": "Hier hast du zu viele Flächen abgezogen.", "isCorrect": false }
+                ],
+                "hint": "Überlege, wie viele der quadratischen Außenflächen bei dem neuen Quader noch sichtbar sind.",
+                "points": 2,
+                "af": "AF 2"
+            },
+            {
+                "question": "Ein gerades Prisma hat als Grundfläche ein rechtwinkliges Dreieck mit den Katheten \\( 3 \\) und \\( 4 \\). Die Körperhöhe ist \\( h=10 \\). Wie groß ist das Volumen?",
+                "answerOptions": [
+                    { "text": "\\( 60 \\)", "rationale": "Korrekt! Grundfläche \\( G = \\frac{1}{2} \\cdot 3 \\cdot 4 = 6 \\). Volumen \\( V = G \\cdot h = 6 \\cdot 10 = 60 \\).", "isCorrect": true },
+                    { "text": "\\( 120 \\)", "rationale": "Du hast bei der Dreiecksfläche das 'durch 2 teilen' vergessen.", "isCorrect": false },
+                    { "text": "\\( 30 \\)", "rationale": "Du hast das Volumen noch einmal halbiert (wie bei einer Pyramide).", "isCorrect": false },
+                    { "text": "\\( 50 \\)", "rationale": "Falsche Berechnung der Grundfläche.", "isCorrect": false }
+                ],
+                "hint": "Berechne zuerst den Flächeninhalt \\( G \\) des Dreiecks. Dann \\( V = G \\cdot h \\).",
+                "points": 2,
+                "af": "AF 2"
+            },
+            {
+                "question": "Was passiert mit dem Volumen eines Würfels, wenn sich seine Kantenlänge \\( a \\) verdoppelt?",
+                "answerOptions": [
+                    { "text": "Das Volumen verachtfacht sich.", "rationale": "Korrekt! Aus \\( V = a^3 \\) wird \\( V_{neu} = (2a)^3 = 8a^3 \\).", "isCorrect": true },
+                    { "text": "Das Volumen verdoppelt sich.", "rationale": "Das wäre ein linearer Zusammenhang. Volumen ist aber dreidimensional.", "isCorrect": false },
+                    { "text": "Das Volumen vervierfacht sich.", "rationale": "Das würde für die Oberfläche oder Fläche gelten (\\( a^2 \\)).", "isCorrect": false },
+                    { "text": "Das Volumen versechsfacht sich.", "rationale": "Dies ist ein häufiger Denkfehler durch den Faktor 6 der Oberfläche.", "isCorrect": false }
+                ],
+                "hint": "Setze in die Formel \\( a^3 \\) statt \\( a \\) einmal \\( 2a \\) ein und löse die Klammer auf.",
+                "points": 2,
+                "af": "AF 3"
+            },
+            {
+                "question": "Welcher dieser Körper hat bei exakt gleichem Volumen in der Regel die kleinste Oberfläche?",
+                "answerOptions": [
+                    { "text": "Die Kugel", "rationale": "Korrekt! Die Kugel ist der kompakteste Körper und minimiert die Oberfläche.", "isCorrect": true },
+                    { "text": "Der Würfel", "rationale": "Ein Würfel hat Ecken und Kanten, weshalb er mehr Oberfläche benötigt als eine Kugel.", "isCorrect": false },
+                    { "text": "Der Zylinder", "rationale": "Ein Zylinder ist kompakt, aber die Kugel ist effizienter.", "isCorrect": false },
+                    { "text": "Die Pyramide", "rationale": "Eine Pyramide hat sehr 'ineffiziente' spitze Ecken.", "isCorrect": false }
+                ],
+                "hint": "Denke an Phänomene in der Natur: Warum sind Seifenblasen oder Planeten rund?",
+                "points": 2,
+                "af": "AF 3"
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let userQuestions = [];
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function checkLockout() {
+            const lastAttempt = localStorage.getItem(QUIZ_ID);
+            if (lastAttempt) {
+                const diff = Date.now() - parseInt(lastAttempt);
+                if (diff < 10 * 60 * 1000) return true;
+            }
+            return false;
+        }
+
+        function startQuiz() {
+            const name = document.getElementById('userName').value.trim();
+            if (!name) return alert("Bitte Vorname eingeben!");
+            
+            if (checkLockout()) {
+                document.getElementById('lockoutMsg').classList.remove('hidden');
+                return;
+            }
+
+            userQuestions = JSON.parse(JSON.stringify(questionsData));
+            shuffle(userQuestions);
+            userQuestions.forEach(q => shuffle(q.answerOptions));
+
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('quizScreen').classList.remove('hidden');
+            showQuestion();
+        }
+
+        function showQuestion() {
+            const q = userQuestions[currentQuestionIndex];
+            document.getElementById('questionCount').innerText = `Frage ${currentQuestionIndex + 1} von ${userQuestions.length}`;
+            document.getElementById('afBadge').innerText = q.af;
+            document.getElementById('questionText').innerHTML = q.question;
+            
+            const container = document.getElementById('optionsContainer');
+            container.innerHTML = "";
+            document.getElementById('feedback').classList.add('hidden');
+            document.getElementById('nextBtn').classList.add('hidden');
+
+            q.answerOptions.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 bg-slate-900 border border-slate-700 rounded-2xl hover:border-[#E63946] transition flex justify-between items-center group";
+                btn.innerHTML = `<span>${opt.text}</span> <span class="text-slate-600 opacity-0 group-hover:opacity-100 text-xs">Wählen</span>`;
+                btn.onclick = () => selectOption(idx);
+                container.appendChild(btn);
+            });
+            
+            if (window.MathJax) {
+                MathJax.typesetPromise([document.getElementById('quizScreen')]).catch((err) => console.log(err.message));
+            }
+        }
+
+        function selectOption(index) {
+            const q = userQuestions[currentQuestionIndex];
+            const opt = q.answerOptions[index];
+            const feedback = document.getElementById('feedback');
+            
+            const btns = document.getElementById('optionsContainer').children;
+            for(let b of btns) {
+                b.disabled = true;
+                b.classList.remove('hover:border-[#E63946]');
+                b.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+
+            feedback.classList.remove('hidden');
+            if (opt.isCorrect) {
+                score += q.points;
+                feedback.className = "mt-8 p-4 rounded-2xl border border-green-500 bg-green-900/20 text-green-400";
+                feedback.innerHTML = `<strong>Richtig!</strong> (+${q.points} BE)<br><span class="text-sm block mt-1">${opt.rationale}</span>`;
+            } else {
+                feedback.className = "mt-8 p-4 rounded-2xl border border-red-500 bg-red-900/20 text-red-400";
+                feedback.innerHTML = `<strong>Falsch.</strong><br><span class="text-sm block mt-1">${opt.rationale}</span><br><em class="text-sm opacity-70 mt-2 block">Tipp: ${q.hint}</em>`;
+            }
+
+            document.getElementById('nextBtn').classList.remove('hidden');
+            
+            if (window.MathJax) {
+                MathJax.typesetPromise([feedback]).catch((err) => console.log(err.message));
+            }
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < userQuestions.length) {
+                showQuestion();
+            } else {
+                finishQuiz();
+            }
+        }
+
+        function finishQuiz() {
+            localStorage.setItem(QUIZ_ID, Date.now().toString());
+            
+            document.getElementById('quizScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.remove('hidden');
+            
+            document.getElementById('finalName').innerText = document.getElementById('userName').value;
+            document.getElementById('finalScore').innerText = `${score} / 20 BE`;
+            
+            const now = new Date();
+            const timeString = now.toLocaleDateString('de-DE') + ' - ' + now.toLocaleTimeString('de-DE') + ' Uhr';
+            document.getElementById('timestamp').innerText = `Abschlusszeit: ${timeString}`;
+        }
+    </script>
+</body>
+</html>

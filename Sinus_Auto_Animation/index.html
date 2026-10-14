@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sinusfunktion: Parameter b</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Styling für den Slider (Range Input) */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #00e5ff;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 4px;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white h-screen flex flex-col overflow-hidden font-sans">
+
+    <!-- Header -->
+    <header class="p-4 bg-slate-800 border-b border-slate-700 shadow-md flex justify-between items-center z-20">
+        <div>
+            <h1 class="text-xl md:text-2xl font-bold text-slate-100">Einfluss des Parameters <span class="text-[#00e5ff]">b</span></h1>
+            <p class="text-xs md:text-sm text-slate-400">Veranschaulicht durch die Geschwindigkeit im Kreisverkehr</p>
+        </div>
+        <div class="hidden md:block text-slate-400 font-mono text-sm bg-slate-900 p-2 rounded">
+            f(x) = a · sin(b · (x + c)) + d
+        </div>
+    </header>
+
+    <!-- Main Canvas Area -->
+    <main class="flex-grow relative w-full" id="canvas-container">
+        <canvas id="animationCanvas" class="absolute inset-0 w-full h-full block"></canvas>
+        
+        <!-- Formula Overlay (Zentriert über dem Kreis) -->
+        <div id="formula-overlay" class="absolute font-mono text-2xl md:text-3xl text-white pointer-events-none font-bold" 
+             style="top: 50%; left: 25%; transform: translate(-50%, -50%); text-shadow: 0 4px 6px rgba(0,0,0,0.8);">
+            f(x) = sin(<span id="b-text" class="text-[#00e5ff]">2.0</span> · x)
+        </div>
+    </main>
+
+    <!-- Controls Bottom Bar -->
+    <footer class="bg-slate-800 border-t border-slate-700 p-4 md:p-6 z-20 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.3)]">
+        <div class="max-w-5xl mx-auto flex flex-col gap-6">
+            
+            <!-- Controls Top Row (Play & Slider) -->
+            <div class="flex flex-col md:flex-row items-center gap-6">
+                <!-- Play/Pause Button -->
+                <button id="playBtn" class="flex-shrink-0 w-14 h-14 bg-[#00e5ff] text-slate-900 rounded-full flex items-center justify-center hover:bg-cyan-300 transition-colors shadow-lg shadow-cyan-500/30">
+                    <!-- Pause Icon (Default) -->
+                    <svg id="icon-pause" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                    <!-- Play Icon (Hidden) -->
+                    <svg id="icon-play" class="hidden ml-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                </button>
+
+                <!-- Slider -->
+                <div class="flex-grow w-full flex items-center gap-4">
+                    <span class="text-slate-400 font-mono w-8 text-right">-2</span>
+                    <input type="range" id="b-slider" min="-2" max="4" step="0.25" value="2">
+                    <span class="text-slate-400 font-mono w-8">4</span>
+                </div>
+
+                <!-- Current Value Display -->
+                <div class="flex-shrink-0 bg-slate-900 px-4 py-2 rounded-lg border border-slate-700 font-mono text-xl">
+                    b = <span id="b-display" class="text-[#00e5ff] font-bold">2.00</span>
+                </div>
+            </div>
+
+            <!-- Quick Select Buttons -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <button class="quick-btn bg-slate-700 hover:bg-slate-600 text-slate-200 py-2 px-4 rounded transition text-sm" data-b="1">
+                    Normal (b=1)
+                </button>
+                <button class="quick-btn bg-slate-700 hover:bg-slate-600 text-slate-200 py-2 px-4 rounded transition text-sm" data-b="2">
+                    Doppelt (b=2)
+                </button>
+                <button class="quick-btn bg-slate-700 hover:bg-slate-600 text-slate-200 py-2 px-4 rounded transition text-sm" data-b="0.5">
+                    Halb (b=0.5)
+                </button>
+                <button class="quick-btn bg-slate-700 hover:bg-slate-600 text-slate-200 py-2 px-4 rounded transition text-sm" data-b="-1">
+                    Rückwärts (b=-1)
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // --- Setup und Variablen ---
+        const canvas = document.getElementById('animationCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        
+        let width, height;
+        let dpr = window.devicePixelRatio || 1;
+
+        // Koordinaten & Dimensionen
+        let cx, cy, R; // Kreis
+        let gx, gy, gw; // Graph
+        
+        // Animation State
+        let t = 0;
+        let isPlaying = true;
+        const maxT = 4 * Math.PI; // Zeigt 2 Perioden der normalen Sinusfunktion an
+        const speed = 0.015; // Fortschritt pro Frame
+        
+        // Parameter
+        let b = 2.0;
+        const colorRed = 'rgba(239, 68, 68, 0.4)'; // Schwaches Rot für Referenz
+        const colorRedSolid = 'rgba(239, 68, 68, 0.8)';
+        const colorCyan = '#00e5ff'; // Aktive Farbe
+
+        // UI Elemente
+        const slider = document.getElementById('b-slider');
+        const bDisplay = document.getElementById('b-display');
+        const bText = document.getElementById('b-text');
+        const formulaOverlay = document.getElementById('formula-overlay');
+        const playBtn = document.getElementById('playBtn');
+        const iconPlay = document.getElementById('icon-play');
+        const iconPause = document.getElementById('icon-pause');
+
+        // --- Resize Handling ---
+        function resize() {
+            const rect = container.getBoundingClientRect();
+            width = rect.width;
+            height = rect.height;
+            
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+
+            // Responsive Layout berechnen
+            const isMobile = width < 768;
+            
+            if (isMobile) {
+                // Auf kleinen Bildschirmen: Untereinander (Graph unter Kreis)
+                cx = width / 2;
+                cy = height * 0.25;
+                R = Math.min(width * 0.3, height * 0.15);
+                
+                gx = 40;
+                gy = height * 0.75;
+                gw = width - 60;
+                
+                formulaOverlay.style.top = '25%';
+                formulaOverlay.style.left = '50%';
+            } else {
+                // Auf großen Bildschirmen: Nebeneinander (wie im Video)
+                cx = width * 0.25;
+                cy = height / 2;
+                R = Math.min(width * 0.12, height * 0.3);
+                
+                gx = width * 0.5;
+                gy = height / 2;
+                gw = width * 0.45;
+                
+                formulaOverlay.style.top = '50%';
+                formulaOverlay.style.left = '25%';
+            }
+        }
+
+        window.addEventListener('resize', resize);
+        resize(); // Initiale Berechnung
+
+        // --- Zeichenfunktionen ---
+
+        function drawRoad() {
+            ctx.beginPath();
+            ctx.arc(cx, cy, R, 0, Math.PI * 2);
+            ctx.strokeStyle = '#1e293b'; // Dunkelgrau
+            ctx.lineWidth = 36;
+            ctx.stroke();
+
+            // Gestrichelte Mittellinie
+            ctx.beginPath();
+            ctx.arc(cx, cy, R, 0, Math.PI * 2);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 15]);
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset
+        }
+
+        function drawGraphAxes() {
+            ctx.strokeStyle = '#334155'; // Achsenfarbe
+            ctx.lineWidth = 2;
+            
+            // X-Achse
+            ctx.beginPath();
+            ctx.moveTo(gx, gy);
+            ctx.lineTo(gx + gw, gy);
+            ctx.stroke();
+
+            // Y-Achse
+            ctx.beginPath();
+            ctx.moveTo(gx, gy - R * 1.5);
+            ctx.lineTo(gx, gy + R * 1.5);
+            ctx.stroke();
+
+            // Hilfslinien & Labels
+            ctx.fillStyle = '#64748b';
+            ctx.font = '14px monospace';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            
+            // Y-Labels (1, -1)
+            ctx.fillText('1', gx - 10, gy - R);
+            ctx.fillText('-1', gx - 10, gy + R);
+            
+            // Gestrichelte Linien für Amplitude
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.moveTo(gx, gy - R); ctx.lineTo(gx + gw, gy - R);
+            ctx.moveTo(gx, gy + R); ctx.lineTo(gx + gw, gy + R);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // X-Achsen Markierungen (Pi-Schritte)
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            const scaleX = gw / maxT;
+            const piLabels = ['π/2', 'π', '3π/2', '2π', '5π/2', '3π', '7π/2', '4π'];
+            const step = Math.PI / 2;
+
+            for (let i = 1; i <= piLabels.length; i++) {
+                let xPos = gx + (i * step) * scaleX;
+                if (xPos > gx + gw) break;
+                
+                // Tick
+                ctx.beginPath();
+                ctx.moveTo(xPos, gy - 5);
+                ctx.lineTo(xPos, gy + 5);
+                ctx.strokeStyle = '#334155';
+                ctx.stroke();
+                
+                // Label
+                ctx.fillText(piLabels[i-1], xPos, gy + 10);
+            }
+        }
+
+        function drawSineWave(paramB, color, currentTime, isDashed = false) {
+            const scaleX = gw / maxT;
+            
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = isDashed ? 1 : 3;
+            if (isDashed) ctx.setLineDash([4, 4]);
+            else ctx.setLineDash([]);
+
+            // Zeichne Kurve von 0 bis currentTime
+            for (let x = 0; x <= currentTime; x += 0.02) {
+                let px = gx + x * scaleX;
+                let py = gy - R * Math.sin(paramB * x);
+                if (x === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset
+        }
+
+        function getCarPosition(paramB, time) {
+            // angle im mathematischen Sinn (gegen den Uhrzeigersinn startend rechts)
+            const angle = paramB * time; 
+            const x = cx + R * Math.cos(angle);
+            // Canvas Y ist invertiert, daher minus
+            const y = cy - R * Math.sin(angle);
+            
+            // Rotation des Autos (Tangente an den Kreis in Fahrtrichtung)
+            // Wir nutzen atan2(dy, dx) eines sehr kleinen zukünftigen Schrittes
+            const nextAngle = paramB * (time + 0.01);
+            const nextX = cx + R * Math.cos(nextAngle);
+            const nextY = cy - R * Math.sin(nextAngle);
+            
+            let rot = Math.atan2(nextY - y, nextX - x);
+            // Wenn b = 0, bewegt es sich nicht. Setze Rotation auf 0 (zeigt nach rechts)
+            if (paramB === 0) rot = -Math.PI / 2; 
+
+            return { x, y, rot };
+        }
+
+        function drawCar(pos, color, isReference = false) {
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            ctx.rotate(pos.rot);
+
+            // Größe des Autos
+            const w = isReference ? 24 : 32;
+            const h = isReference ? 12 : 16;
+
+            // Auto Körper
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.roundRect(-w/2, -h/2, w, h, 4);
+            ctx.fill();
+
+            // Frontscheibe
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.beginPath();
+            ctx.roundRect(w/6, -h/2 + 2, w/4, h - 4, 2);
+            ctx.fill();
+            
+            // Scheinwerfer (zeigen nach rechts im lokalen Koordinatensystem)
+            ctx.fillStyle = '#fef08a'; // Yellow 200
+            ctx.beginPath();
+            ctx.arc(w/2, -h/2 + 3, 2, 0, Math.PI*2);
+            ctx.arc(w/2, h/2 - 3, 2, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Lichtkegel (nur für das aktive Auto)
+            if (!isReference) {
+                ctx.fillStyle = 'rgba(254, 240, 138, 0.15)'; // Schwaches Gelb
+                ctx.beginPath();
+                ctx.moveTo(w/2, -h/2 + 3);
+                ctx.lineTo(w/2 + 40, -h/2 - 15);
+                ctx.lineTo(w/2 + 40, h/2 + 15);
+                ctx.lineTo(w/2, h/2 - 3);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        function drawConnectingLine(carPos, graphY, color) {
+            const scaleX = gw / maxT;
+            const graphX = gx + t * scaleX;
+            
+            ctx.beginPath();
+            ctx.setLineDash([4, 6]);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            
+            ctx.moveTo(carPos.x, carPos.y);
+            
+            // Wenn auf mobile (untereinander), ziehe die Linie nicht horizontal,
+            // sondern markiere nur die aktuelle Höhe und Position im Graph
+            const isMobile = width < 768;
+            if (isMobile) {
+                // Auf Mobile verbinden wir nicht quer durchs Bild, da y-Achsen verschoben sind
+                // Stattdessen zeichnen wir kleine Indikatoren
+                ctx.arc(carPos.x, carPos.y, 4, 0, Math.PI*2);
+                ctx.moveTo(graphX, gy);
+                ctx.lineTo(graphX, graphY);
+            } else {
+                // Auf Desktop: Perfekte horizontale Verbindungslinie
+                ctx.lineTo(graphX, graphY);
+            }
+            
+            ctx.stroke();
+            
+            // Punkt auf dem Graphen
+            ctx.beginPath();
+            ctx.arc(graphX, graphY, 5, 0, Math.PI*2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.setLineDash([]);
+        }
+
+        // --- Main Animation Loop ---
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawRoad();
+            drawGraphAxes();
+
+            // 1. Referenz-Auto & Kurve (b = 1, Rot)
+            if (Math.abs(b - 1.0) > 0.01) { // Nur zeichnen, wenn b nicht exakt 1 ist, sonst überlappen sie
+                drawSineWave(1, colorRed, t);
+                const posRed = getCarPosition(1, t);
+                drawCar(posRed, colorRedSolid, true);
+            }
+
+            // 2. Aktives Auto & Kurve (b = b, Cyan)
+            drawSineWave(b, colorCyan, t);
+            const posCyan = getCarPosition(b, t);
+            
+            // Berechne Graph Y Position für die Verbindungslinie
+            const graphYCyan = gy - R * Math.sin(b * t);
+            
+            drawConnectingLine(posCyan, graphYCyan, colorCyan);
+            drawCar(posCyan, colorCyan, false);
+
+            // Time Fortschritt
+            if (isPlaying) {
+                t += speed;
+                if (t >= maxT) {
+                    t = 0; // Loop
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // --- Interaktivität ---
+
+        function updateB(newB) {
+            b = parseFloat(newB);
+            slider.value = b;
+            
+            // Formatierung (mit Plus-Zeichen falls positiv für klarere Info, wie im Video oft gemacht)
+            let bFormatted = b.toFixed(2);
+            
+            bDisplay.innerText = bFormatted;
+            bText.innerText = bFormatted;
+        }
+
+        slider.addEventListener('input', (e) => {
+            updateB(e.target.value);
+        });
+
+        // Quick Buttons
+        document.querySelectorAll('.quick-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                updateB(e.target.getAttribute('data-b'));
+            });
+        });
+
+        // Play / Pause
+        playBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                iconPlay.classList.add('hidden');
+                iconPause.classList.remove('hidden');
+            } else {
+                iconPause.classList.add('hidden');
+                iconPlay.classList.remove('hidden');
+            }
+        });
+
+        // Start Animation
+        animate();
+    </script>
+</body>
+</html>
